@@ -1,0 +1,53 @@
+# Checks the project with a real Terraform binary on every pull request.
+# It needs NO AWS credentials: init runs with -backend=false, validate is offline, and the
+# module tests use mocked providers. Deploying (plan/apply with OIDC and a protected prod
+# environment) is a separate workflow you add later.
+name: terraform-validate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_VERSION: "1.10.5" # same minor as required_version in versions.tf; bump in its own PR
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Format check
+        run: terraform fmt -check -recursive -diff
+
+      - name: Environment parity
+        run: bash scripts/check-env-parity.sh
+
+      - name: Validate modules, examples, bootstrap and stacks
+        run: |
+          set -euo pipefail
+          for dir in modules/*/ modules/*/examples/*/ bootstrap/*/ environments/*/*/; do
+            echo "::group::validate $dir"
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+            echo "::endgroup::"
+          done
+
+      - name: Module tests (mocked providers)
+        run: |
+          set -euo pipefail
+          for dir in modules/*/; do
+            echo "::group::test $dir"
+            terraform -chdir="$dir" test
+            echo "::endgroup::"
+          done

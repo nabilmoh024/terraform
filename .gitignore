@@ -1,0 +1,27 @@
+# Local Terraform working data
+.terraform/
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+
+# State must only live in the remote backend (bootstrap/ is the one local-state exception)
+*.tfstate
+*.tfstate.*
+
+# Local overrides and anything secret. terraform.tfvars is committed on purpose:
+# it holds non-secret, environment-specific values. Secrets go in TF_VAR_* env vars
+# or *.secret.tfvars, never in git.
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.secret.tfvars
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# NOTE: .terraform.lock.hcl is NOT ignored - commit it so every machine and CI run
+# uses the same provider versions and checksums.
